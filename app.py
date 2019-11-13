@@ -18,3 +18,11 @@ def greeting(request, response, name):
 @app.route("/tell/{age:d}")
 def age(request, response, age):
     response.text = f"your age={age}"
+
+@app.route("/book")
+class BooksResource:
+    def get(self, req, resp):
+        resp.text = "Books Page"
+
+    def post(self, req, resp):
+        resp.text = "post worked"    
