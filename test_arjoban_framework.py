@@ -51,3 +51,13 @@ def test_class_based_handler(api, client):
 
     assert client.get('http://testserver/classTest').text == "your order"
     assert client.post('http://testserver/classTest').text == "posted"
+
+def test_alternative_route(api, client):
+    response_text = "Alternative way to add route"
+
+    def home(req,resp):
+        resp.text = response_text
+
+    api.add_route("/alternative", home)
+
+    assert client.get("http://testserver/alternative").text  == response_text

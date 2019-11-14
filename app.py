@@ -25,4 +25,10 @@ class BooksResource:
         resp.text = "Books Page"
 
     def post(self, req, resp):
-        resp.text = "post worked"    
+        resp.text = "post worked"
+
+#encoding unicode string to bytes
+def template_handler(req, resp):
+    resp.body = app.template("index.html", {"name": "Arjoban", "title": "Best Framework"}).encode()
+
+app.add_route("/template", template_handler)

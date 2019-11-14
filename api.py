@@ -1,3 +1,5 @@
+import os
+from jinja2 import Environment, FileSystemLoader
 from webob import Request, Response
 from parse import parse
 import inspect
@@ -6,21 +8,32 @@ from wsgiadapter import WSGIAdapter as RequestsWSGIAdapter
 
 class API:
 
-    def __init__(self):
+    def __init__(self, templates_dir="templates"):
         self.routes={}
 
-    def route(self, path):
+        self.templates_env = Environment(loader=FileSystemLoader(os.path.abspath(templates_dir)))
 
+    def template(self, template_name, context=None):
+        if context is None:
+            context={}
+
+        return self.templates_env.get_template(template_name).render(**context)    
+
+    #django way of adding handlers with paths
+    def add_route(self, path, handler):
         assert path not in self.routes, "Such route already exists"
-
         """
         #same functionality as above
         if path in self.routes:
             raise AssertionError("Such route already exists.")
-            """
+        """
 
+        self.routes[path] = handler
+
+    #flask way of adding routes or paths with handlers using decorators
+    def route(self, path):
         def wrapper(handler):
-            self.routes[path] = handler
+            self.add_route(path, handler)
             return handler
 
         return wrapper
