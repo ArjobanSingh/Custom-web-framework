@@ -6,6 +6,7 @@ import inspect
 from requests import Session as RequestsSession
 from wsgiadapter import WSGIAdapter as RequestsWSGIAdapter
 from whitenoise import WhiteNoise
+from middleware import Middleware
 
 class API:
 
@@ -15,6 +16,10 @@ class API:
         self.exception_handler = None
         #wrapped our wsgi app with WhiteNoise and gave it path to static folder
         self.whitenoise = WhiteNoise(self.wsgi_app, root=static_dir)
+        self.middleware = Middleware(self)
+
+    def add_middleware(self, middleware_cls):
+        self.middleware.add(middleware_cls)
 
     def wsgi_app(self, environ, start_response):
         #response_body = b"Hello, World! Class"
@@ -53,7 +58,13 @@ class API:
         return wrapper
 
     def __call__(self, environ, start_response):
-        return self.whitenoise(environ, start_response)
+        path_info = environ["PATH_INFO"]
+
+        if path_info.startswith("/static"):
+            environ['PATH_INFO'] = path_info[len("/static"):]
+            return self.whitenoise(environ, start_response)
+            
+        return self.middleware(environ, start_response)
 
     def find_handler(self, request_path):
         for path, handler in self.routes.items():

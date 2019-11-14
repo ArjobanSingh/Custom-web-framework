@@ -1,6 +1,16 @@
 from api import API
+from middleware import Middleware
 
 app = API()
+
+class SimpleCustomMiddleware(Middleware):
+    def process_request(self, request):
+        print("Processing request", request.url)
+
+    def process_response(self, request, response):
+        print("processing response", request.url)
+
+app.add_middleware(SimpleCustomMiddleware)        
 
 def custom_exception_handler(request, response, exception_cls):
     #whenever any exception will occur, this msg will popup on user screen
