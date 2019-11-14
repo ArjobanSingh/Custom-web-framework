@@ -2,10 +2,17 @@ from api import API
 
 app = API()
 
+def custom_exception_handler(request, response, exception_cls):
+    #whenever any exception will occur, this msg will popup on user screen
+    response.text = "Oops! Something went wrong. Please contact us at **********"
+
+app.add_exception_handler(custom_exception_handler)
+
 @app.route("/home")
-def home(request, response):
+def exception_throwing_handler_at_home(request, response):
     #we don't need to return response, because it is object and is mutable, so its text is getting changed
-    response.text = "Hello from the home page"
+    #response.text = "Hello from the home page"
+    raise AssertionError("This handler should not be used")
 
 @app.route("/about")
 def about(request, response):

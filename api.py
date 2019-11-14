@@ -5,19 +5,33 @@ from parse import parse
 import inspect
 from requests import Session as RequestsSession
 from wsgiadapter import WSGIAdapter as RequestsWSGIAdapter
+from whitenoise import WhiteNoise
 
 class API:
 
-    def __init__(self, templates_dir="templates"):
+    def __init__(self, templates_dir="templates", static_dir="static"):
         self.routes={}
-
         self.templates_env = Environment(loader=FileSystemLoader(os.path.abspath(templates_dir)))
+        self.exception_handler = None
+        #wrapped our wsgi app with WhiteNoise and gave it path to static folder
+        self.whitenoise = WhiteNoise(self.wsgi_app, root=static_dir)
+
+    def wsgi_app(self, environ, start_response):
+        #response_body = b"Hello, World! Class"
+        #status = "200 OK"
+        #start_response(status, headers=[])
+        #return iter([response_body])
+        request = Request(environ)
+
+        response = self.handle_request(request)
+
+        return response(environ, start_response)
 
     def template(self, template_name, context=None):
         if context is None:
             context={}
 
-        return self.templates_env.get_template(template_name).render(**context)    
+        return self.templates_env.get_template(template_name).render(**context)
 
     #django way of adding handlers with paths
     def add_route(self, path, handler):
@@ -39,15 +53,7 @@ class API:
         return wrapper
 
     def __call__(self, environ, start_response):
-        request = Request(environ)
-
-        response = self.handle_request(request)
-
-        return response(environ, start_response)
-        #response_body = b"Hello, World! Class"
-        #status = "200 OK"
-        #start_response(status, headers=[])
-        #return iter([response_body])
+        return self.whitenoise(environ, start_response)
 
     def find_handler(self, request_path):
         for path, handler in self.routes.items():
@@ -67,20 +73,27 @@ class API:
 
         handler, kwargs = self.find_handler(request_path=request.path)
         #print(kwargs)
-        if handler is not None:
-            #check if handler a class or function
-            if inspect.isclass(handler):
-                #first param as object instance, second param will \
-                #return get(function or method of this class) if request\
-                # is GET and post if request POST and None(which is third param)\
-                #if something else
-                handler = getattr(handler(), request.method.lower(), None)
-                if handler is None:
-                    raise AttributeError("Method not allowed", request.method)
+        try:
+            if handler is not None:
+                #check if handler a class or function
+                if inspect.isclass(handler):
+                    #first param as object instance, second param will \
+                    #return get(function or method of this class) if request\
+                    # is GET and post if request POST and None(which is third param)\
+                    #if something else
+                    handler = getattr(handler(), request.method.lower(), None)
+                    if handler is None:
+                        raise AttributeError("Method not allowed", request.method)
 
-            handler(request, response, **kwargs)
-        else:
-            self.default_response(response)
+                handler(request, response, **kwargs)
+            else:
+                self.default_response(response)
+        except Exception as e:
+            #if someone doesn't provide custom exception handler, tham original error will be shown on screen
+            if self.exception_handler is None:
+                raise e
+            else:
+                self.exception_handler(request, response, e)
 
         return response
 
@@ -88,3 +101,6 @@ class API:
         session = RequestsSession()
         session.mount(prefix=base_url, adapter=RequestsWSGIAdapter(self))
         return session
+
+    def add_exception_handler(self, exception_handler):
+        self.exception_handler = exception_handler
